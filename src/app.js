@@ -93,6 +93,19 @@ function createLights(){
 	const pointLightHelper = new THREE.CameraHelper(pointLight.shadow.camera);
 	scene.add(pointLightHelper);
 	
+	//SpotLight
+	const spotLight = new THREE.SpotLight( 0x00ff00, 1, 20);
+	spotLight.position.set(4, 4, 0);
+	spotLight.target.position.set(0, 0, 2);
+	spotLight.castShadow = true;
+	spotLight.shadow.mapSize.set(512, 512);
+
+	scene.add( spotLight );
+	scene.add(spotLight.target);
+
+	const spotLightHelper = new THREE.SpotLightHelper(spotLight, 0.2);
+	scene.add(spotLightHelper);
+
 	//GUI
 	const folder1 = gui.addFolder("Directional Light");
 	folder1.add(dirLight1, 'intensity', 0, 5, 0.1);
@@ -100,8 +113,18 @@ function createLights(){
 	const folder = gui.addFolder("Point Light");
 	folder.add(pointLight, 'intensity', 0, 5, 0.1);
 	folder.add(pointLight, 'distance', 0, 40, 1);
-
 	makeXYZLightGUI(folder, pointLight.position);
+	
+	const folder2 = gui.addFolder("Spot Light");
+	folder2.add(spotLight, 'intencity', 0, 5, 0.1);
+	folder2.add(spotLight, 'angle', 0, 6).onChange(function(){
+		spotLight.target.updateMatrixWorld();
+		spotLightHelper.update();
+	});
+	folder2.add(spotLight, 'penumbra', 0, 2, 0.01);
+	makeXYZLightGUI(folder2, spotLight.position);
+
+
 }
 function createModels(){
 	//plane
