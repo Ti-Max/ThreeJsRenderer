@@ -1,26 +1,28 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import {GUI} from 'lil-gui'
-import { degToRad } from 'three/src/math/MathUtils';
-import { MeshPhongMaterial } from 'three';
+import {EffectComposer} from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import {RenderPass} from 'three/examples/jsm/postprocessing/RenderPass.js';
+import {ShaderPass} from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import * as VerticalBlur from './VerticalBlurShader.hlsl.js';
 
 let scene; 
 let camera;
 let renderer;
 let orbitControl;
+let composer;
 
 let dirLight1;
 let lightSphere;
-
 const gui = new GUI();
+let lastTime = 0;
 
 init();
 animate();
 
 function init() {
 	scene = new THREE.Scene();
-	camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+	camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 100 );
 	renderer = new THREE.WebGLRenderer({antialias : true});
 	orbitControl = new OrbitControls(camera, renderer.domElement);
 
@@ -30,7 +32,26 @@ function init() {
 
 	//Renderer settings
 	renderer.shadowMap.enabled = true;
+	renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+	scene.fog = new THREE.Fog(0xff9999, 10, 20)
+	scene.background = new THREE.Color(0xff9999);
 
+	//ShaderPass
+	composer = new EffectComposer(renderer);
+	composer.addPass(new RenderPass(scene, camera));
+
+	const colorShader = {
+		uniforms: {
+		  tDiffuse: { value: null },
+		},
+		vertexShader: VerticalBlur.vertexShader,
+		fragmentShader: VerticalBlur.fragmentShader,
+	};
+
+
+	const colorPass = new ShaderPass(colorShader);
+	colorPass.renderToScreen = true;
+	composer.addPass(colorPass);
 	//Lights
 	createLights();
 	//-------------Models
@@ -39,20 +60,17 @@ function init() {
 	buildGui();
 
 	camera.position.z = -5;
-	const cameraHelper = new THREE.CameraHelper(dirLight1.shadow.camera);
-	scene.add(cameraHelper);
 	
 }
 
 function animate(time) {
+	time *= 0.001;
+	const deltaTime = time - lastTime;
+	lastTime = time;
 	orbitControl.update();
 
-	dirLight1.position.x = Math.cos(time * 0.001 * 0.1) * 2;
-	dirLight1.position.z = Math.sin(time * 0.001 * 0.1) * 2;
+	composer.render(deltaTime);
 
-
-
-	renderer.render( scene, camera );
 	requestAnimationFrame( animate );
 }
 
@@ -80,57 +98,47 @@ function createLights(){
 	dirLight1.shadow.mapSize.set(512, 512);
 	scene.add( dirLight1 );
 
-	const ligthHelper = new THREE.DirectionalLightHelper(dirLight1);
-	scene.add(ligthHelper);
+	// const ligthHelper = new THREE.DirectionalLightHelper(dirLight1);
+	// scene.add(ligthHelper);
 
-	//Pointlight
-	const pointLight = new THREE.PointLight( 0x5555ff, 1, 20);
-	pointLight.position.set(2, 4, 2);
-	pointLight.castShadow = true;
-	pointLight.shadow.mapSize.set(512, 512);
-	scene.add( pointLight );
+	// //Pointlight
+	// const pointLight = new THREE.PointLight( 0x5555ff, 1, 20);
+	// pointLight.position.set(2, 4, 2);
+	// pointLight.castShadow = true;
+	// pointLight.shadow.bias = 0.0001;
+	// pointLight.shadow.mapSize.set(512, 512);
+	// scene.add( pointLight );
 
-	const pointLightHelper = new THREE.CameraHelper(pointLight.shadow.camera);
-	scene.add(pointLightHelper);
+	// const pointLightHelper = new THREE.CameraHelper(pointLight.shadow.camera);
+	// scene.add(pointLightHelper);
 	
-	//SpotLight
-	const spotLight = new THREE.SpotLight( 0x00ff00, 1, 20);
-	spotLight.position.set(4, 4, 0);
-	spotLight.target.position.set(0, 0, 2);
-	spotLight.castShadow = true;
-	spotLight.shadow.mapSize.set(512, 512);
+	// //SpotLight
+	// const spotLight = new THREE.SpotLight( 0x00ff00, 1, 20);
+	// spotLight.position.set(4, 4, 0);
+	// spotLight.target.position.set(0, 0, 2);
+	// spotLight.castShadow = true;
+	// spotLight.shadow.bias = 0.0001;
+	// spotLight.shadow.mapSize.set(512, 512);
 
-	scene.add( spotLight );
-	scene.add(spotLight.target);
+	// scene.add( spotLight );
+	// scene.add(spotLight.target);
 
-	const spotLightHelper = new THREE.SpotLightHelper(spotLight, 0.2);
-	scene.add(spotLightHelper);
+	// const spotLightHelper = new THREE.SpotLightHelper(spotLight, 0.2);
+	// scene.add(spotLightHelper);
 
 	//GUI
 	const folder1 = gui.addFolder("Directional Light");
 	folder1.add(dirLight1, 'intensity', 0, 5, 0.1);
 
-	const folder = gui.addFolder("Point Light");
-	folder.add(pointLight, 'intensity', 0, 5, 0.1);
-	folder.add(pointLight, 'distance', 0, 40, 1);
-	makeXYZLightGUI(folder, pointLight.position);
-	
-	const folder2 = gui.addFolder("Spot Light");
-	folder2.add(spotLight, 'intencity', 0, 5, 0.1);
-	folder2.add(spotLight, 'angle', 0, 6).onChange(function(){
-		spotLight.target.updateMatrixWorld();
-		spotLightHelper.update();
-	});
-	folder2.add(spotLight, 'penumbra', 0, 2, 0.01);
-	makeXYZLightGUI(folder2, spotLight.position);
+
 
 
 }
 function createModels(){
 	//plane
 	const plane = new THREE.Mesh(
-		new THREE.PlaneGeometry( 8, 8 ),
-		new THREE.MeshPhongMaterial( { color: 0xBB9999, specular: 0x101010 } )
+		new THREE.PlaneGeometry( 100, 100 ),
+		new THREE.MeshPhongMaterial( { color: 0xAA9999, specular: 0x101010 } )
 	);
 	plane.rotation.x = - Math.PI / 2;
 	plane.receiveShadow = true;
@@ -149,7 +157,7 @@ function createModels(){
 	//sphere
 	const sphere = new THREE.Mesh(
 		new THREE.SphereGeometry(1),
-		new MeshPhongMaterial({color : 0xff4455})
+		new THREE.MeshPhongMaterial({color : 0xff4455})
 	)
 	sphere.position.set(2, 1, 0);
 	sphere.castShadow = true;
@@ -158,7 +166,7 @@ function createModels(){
 	//sphere
 	const torus = new THREE.Mesh(
 		new THREE.TorusKnotGeometry(0.5, 0.2),
-		new MeshPhongMaterial({color : 0x00CC33})
+		new THREE.MeshPhongMaterial({color : 0x00CC33})
 	)
 	torus.position.set(1, 1, 2);
 	torus.castShadow = true;
