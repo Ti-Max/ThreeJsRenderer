@@ -2,7 +2,10 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import {GUI} from 'lil-gui'
 import {OBJLoader} from 'three/examples/jsm/loaders/OBJLoader.js';
+import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
+
 import {MTLLoader} from 'three/examples/jsm/loaders/MTLLoader.js';
+import { BoxGeometry, CameraHelper, DirectionalLightHelper, Material, Mesh } from 'three';
 
 let scene; 
 let camera;
@@ -30,10 +33,10 @@ function init() {
 
 	//Renderer settings
 	renderer.shadowMap.enabled = true;
+	renderer.outputEncoding = THREE.sRGBEncoding;
 	renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 	scene.fog = new THREE.Fog(0xff9999, 50, 500)
 	scene.background = new THREE.Color(0xff9999);
-
 	//Lights
 	createLights();
 	//-------------Models
@@ -69,7 +72,7 @@ function onWindowResize() {
 
 function createLights(){
 	//Ambient ligth
-	const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+	const ambientLight = new THREE.AmbientLight(0xffffff, 1);
 	scene.add(ambientLight);
 
 	//Direction light
@@ -80,6 +83,8 @@ function createLights(){
 	dirLight1.shadow.mapSize.set(512, 512);
 	scene.add( dirLight1 );
 
+	const lightHelper = new CameraHelper(dirLight1.shadow.camera);
+	scene.add(lightHelper);
 	//GUI
 	const folder1 = gui.addFolder("Directional Light");
 	folder1.add(dirLight1, 'intensity', 0, 5, 0.1);
@@ -89,16 +94,21 @@ function createLights(){
 
 }
 function createModels(){
-	const mtlLoader = new MTLLoader();
-	const objLoader = new OBJLoader();
-	mtlLoader.load('models/car2/car2.mtl', (mtl) => {
-	  mtl.preload();
-	  objLoader.setMaterials(mtl);
-	  objLoader.load('models/car2/car2.obj', (root) => {
-		scene.add(root);
-	  });
-	});
 
+	const loader = new GLTFLoader();
+	loader.load("./models/car3/scene.gltf", function ( gltf ) {
+		gltf.scene.castShadow = true;
+		scene.add( gltf.scene );
+	
+	}, undefined, function ( error ) {
+	
+		console.error( error );
+	
+	} )
+
+	const cube  = new Mesh(new BoxGeometry(1),new Material({color: 0x0000ff}));
+
+	// scene.add(cube);
 	//plane
 	const plane = new THREE.Mesh(
 		new THREE.PlaneGeometry( 1000, 1000 ),
@@ -108,33 +118,6 @@ function createModels(){
 	plane.receiveShadow = true;
 
 	scene.add( plane );
-
-	// //cube
-	// const cube = new THREE.Mesh(
-	// 	new THREE.BoxGeometry(0.4, 0.4, 0.4),
-	// 	new THREE.MeshPhongMaterial({color : 0x2288ff})
-	// );
-	// cube.castShadow = true;
-	// cube.position.y = 1;
-	// scene.add(cube);
-
-	// //sphere
-	// const sphere = new THREE.Mesh(
-	// 	new THREE.SphereGeometry(1),
-	// 	new THREE.MeshPhongMaterial({color : 0xff4455})
-	// )
-	// sphere.position.set(2, 1, 0);
-	// sphere.castShadow = true;
-	// scene.add(sphere);
-	
-	// //sphere
-	// const torus = new THREE.Mesh(
-	// 	new THREE.TorusKnotGeometry(0.5, 0.2),
-	// 	new THREE.MeshPhongMaterial({color : 0x00CC33})
-	// )
-	// torus.position.set(1, 1, 2);
-	// torus.castShadow = true;
-	// scene.add(torus);
 }
 
 function buildGui(){
