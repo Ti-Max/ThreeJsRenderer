@@ -6,7 +6,8 @@
   "private": true,
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "webpack --mode development --entry ./src/app.js"
+    "dev": "webpack --mode development --entry ./src/app.js",
+    "build": "webpack --mode production --entry ./src/app.js"
   },
   "keywords": [],
   "author": "",
