@@ -1,6 +1,10 @@
 # ThreeJsRenderer
 Testing Three.js
 
-To lunch website, open 'dist' folder on your browser
+koden jeg skrev er i 'src' mappe
 
-Code i wrote is in the 'src' folder
+Pictures:
+![This is an image](Screenshots/1.png)
+![This is an image](Screenshots/2.png)
+![This is an image](Screenshots/3.png)
+![This is an image](Screenshots/4.png)
